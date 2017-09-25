@@ -175,10 +175,10 @@ def merge(solutions, newSolns, varsNo, solnNo, solnToKeep):
 def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
     repairing=soln
     count=0
-    lhsOrig=lhs(soln, constraints, constNo,varsNo)
     #print repairing[varsNo]
     while repairing[varsNo] > 0:
         #print repairing[varsNo]
+        lhsOrig=lhs(soln, constraints, varsNo)
         classesAnalysis=[]
         for classIdx in range(int(varsNo/varsPerClass)):
             classAnalysis=[]
@@ -191,31 +191,42 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
                     lhsDrop=copy.deepcopy(lhsOrig)
                     for const in constraints:
                         coeffs.append(const[index])
-                        lhsDrop[itx]=lhsDrop[itx]-const[index]
+                        lhsDrop[itx]=lhsDrop[itx]-int(const[index])
                         itx+=1
-                    classAnalysis.append([index,coeffs,0])
+                    classAnalysis.append([index,coeffs,repairing[varsNo]])
                     for others in range(int(varsPerClass)):
                         if repairing[int(varsPerClass*classIdx)+others] != 1:
                             #print "HERE"
                             idx=int(varsPerClass*classIdx)+others
                             coeffsNew=[]
+                            lhsAdd=copy.deepcopy(lhsDrop)
+                            itx=0
                             for const in constraints:
                                 coeffsNew.append(const[idx])
-                            classAnalysis.append([idx, coeffsNew, improvement(coeffs,coeffsNew,constNo)])
-                    classAnalysis = sorted(classAnalysis, key=itemgetter(2), reverse=True)
+                                lhsAdd[itx]=lhsAdd[itx]+int(const[idx])
+                                itx+=1
+                            classAnalysis.append([idx,coeffsNew,score(lhsAdd, constraints, constNo)])
+                            #classAnalysis.append([idx, coeffsNew, improvement(coeffs,coeffsNew,constNo)])
+                    #classAnalysis = sorted(classAnalysis, key=itemgetter(2), reverse=True)
+                    classAnalysis = sorted(classAnalysis, key=itemgetter(2))
                     classesAnalysis.append(classAnalysis[0])
             #print classAnalysis
-        classesAnalysis = sorted(classesAnalysis, key=itemgetter(2), reverse=True)
+        classesAnalysis = sorted(classesAnalysis, key=itemgetter(2))
+        #classesAnalysis = sorted(classesAnalysis, key=itemgetter(2), reverse=True)
         #print classesAnalysis
+        
+        repaired = classSwap(repairing, classesAnalysis[0][0], varsNo, varsPerClass)
+        repairing = repaired
+        repairing[-2] = violations2(repairing, constraints, constNo,varsNo)
+        repairing[-1] = sumproduct(repairing, obj)
+        if repairing[varsNo] == 0:
+                return repairing
+        
+        ''' Can't just loop through the classesAnalysis, need to re-evaluate
         for analysis in classesAnalysis:
             #print analysis
             repaired = classSwap(repairing, analysis[0], varsNo, varsPerClass)
-            '''
-            if repaired[0:varsNo] == soln[0:varsNo]:
-                print repaired[varsNo]
-            else:
-                print repaired
-            #'''
+            
             
             repairing = repaired
             repairing[-2] = violations2(repairing, constraints, constNo,varsNo)
@@ -224,10 +235,19 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
             #print repairing
             if repairing[varsNo] == 0:
                 return repairing
+        #'''
         count+=1
         if count > 100:
+            f = open('issues.txt', 'w')
+            f.write(str(soln)+"\n")
+            f.write(str(obj)+"\n")
+            f.write(str(constraints)+"\n")
+            f.write(str(constNo)+"\n")
+            f.write(str(varsNo)+"\n")
+            f.write(str(repairing)+"\n")
+            f.close()
             print repairing
-            return
+            return repairing
     #return repair(repairing, obj, constraints, constNo, varsNo, varsPerClass)
     return repairing
                         
@@ -249,19 +269,29 @@ def classSwap(soln, index, varsNo, varsPerClass):
     #print soln
     return soln
     
-def lhs(soln, constraints, constNo, varsNo):
+def lhs(soln, constraints, varsNo):
     lhsVector=[]
     count=0
     for constraint in constraints:
         lhsSum = sumproduct(soln, constraint[0:varsNo]) #- int(constraint[len(constraint)-1])
-        # if lhs > rhs and we are doing a <= constraint
-        if count < constNo:
-            lhsVector.append(abs(lhsSum))
-        # if lhs < rhs and we are doing a >= constraint
-        elif count >= constNo:
-            lhsVector.append(abs(lhsSum))
+        lhsVector.append(abs(lhsSum))
         count+=1
     return lhsVector
+    
+# returns violations from lhs values compared to rhs values from the constraints
+def score(lhsAdd, constraints, constNo):
+    violations=0
+    count=0
+    for constraint in constraints:
+        diff = lhsAdd[count] - int(constraint[len(constraint)-1])
+        # if lhs > rhs and we are doing a <= constraint
+        if diff > 0 and count < constNo:
+            violations += abs(diff)
+        # if lhs < rhs and we are doing a >= constraint
+        elif diff < 0 and count >= constNo:
+            violations += abs(diff)
+        count+=1
+    return violations
     
 def main():
     '''
