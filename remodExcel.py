@@ -19,6 +19,9 @@ def main():
     for dataSet in [1,2,3,4,5,6,7,8,9]:
         # 2D list of jaya values [[None]*numOfElts for _ in range(numOfLists)]
         jayaVals = [[None]*6 for _ in range(15)]
+        
+        # 2D list of number of iterations
+        jayaItrs = [[None]*6 for _ in range(15)]
     
         # sheet.write(row, col, value)
         newBook = xlwt.Workbook(encoding="utf-8")
@@ -33,7 +36,12 @@ def main():
         finalRow = 2
         finalCol = 1
         
-        filename='mdmkp_ct'+str(dataSet)+'Debug_200itr_Jaya.xls'
+        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_each_Jaya.xls'
+        
+        filename='mdmkp_ct'+str(dataSet)+tag
+        #filename='mdmkp_ct'+str(dataSet)+'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_everyItr_Jaya.xls'
         myBook = open_workbook(filename,on_demand=True)
         
         
@@ -47,7 +55,9 @@ def main():
             mySheet = myBook.sheet_by_name(name)
             for type in range(0,6):
                 jayaVals[sheetNum][type] = mySheet.cell(myRowOffset+type,myColOffset).value
+                jayaItrs[sheetNum][type] = mySheet.cell(myRowOffset+type,myColOffset+1).value
                 newSheet.write(sheetNum, 2*type, jayaVals[sheetNum][type])
+                newSheet.write(sheetNum, 2*type+1, jayaItrs[sheetNum][type])
             sheetNum+=1
             # sheet.cell(row,col).value
         
@@ -60,9 +70,8 @@ def main():
         myBook.release_resources()
     
             
-    
-    
-        newBook.save('mdmkpc10pc_ct'+str(dataSet)+'_200itr.xls')
+        newBook.save('mdmkpc10pc_ct'+str(dataSet)+tag)
+        #newBook.save('mdmkpc10pc_ct'+str(dataSet)+'_200itr_10itrsWithoutImprovement_NBHD_everyItr_Jaya.xls')
         print('Book '+str(dataSet)+' saved')
     
     
