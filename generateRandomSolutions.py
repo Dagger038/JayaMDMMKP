@@ -193,7 +193,8 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
                         coeffs.append(const[index])
                         lhsDrop[itx]=lhsDrop[itx]-int(const[index])
                         itx+=1
-                    classAnalysis.append([index,coeffs,repairing[varsNo]])
+                    classAnalysis.append([index,coeffs,repairing[varsNo],repairing[varsNo+1]])
+                    #classAnalysis.append([index,coeffs,repairing[varsNo]])
                     for others in range(int(varsPerClass)):
                         if repairing[int(varsPerClass*classIdx)+others] != 1:
                             #print "HERE"
@@ -205,15 +206,28 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
                                 coeffsNew.append(const[idx])
                                 lhsAdd[itx]=lhsAdd[itx]+int(const[idx])
                                 itx+=1
-                            classAnalysis.append([idx,coeffsNew,score(lhsAdd, constraints, constNo)])
-                            #classAnalysis.append([idx, coeffsNew, improvement(coeffs,coeffsNew,constNo)])
-                    #classAnalysis = sorted(classAnalysis, key=itemgetter(2), reverse=True)
+                            classRepair=copy.deepcopy(repairing)
+                            classRepair=classSwap(classRepair, idx, varsNo, varsPerClass)
+                            classAnalysis.append([idx,coeffsNew,score(lhsAdd, constraints, constNo),sumproduct(classRepair, obj)])
+                            #print classAnalysis
+                            #classAnalysis.append([idx, coeffsNew, score(lhsAdd, constraints, constNo)])
+                    classAnalysis = sorted(classAnalysis, key=itemgetter(3), reverse=True)
                     classAnalysis = sorted(classAnalysis, key=itemgetter(2))
                     classesAnalysis.append(classAnalysis[0])
+                    '''
+                    # sort the solutions, first by obj funct, then by violations
+                    # this causes solutions with the same violations to be sorted next by obj funct
+                    solutions = sorted(solutions, key=itemgetter(int(varsNo+1)), reverse=True)
+                    solutions = sorted(solutions, key=itemgetter(int(varsNo)))
+                    '''
+                    
             #print classAnalysis
+        classesAnalysis = sorted(classesAnalysis, key=itemgetter(3), reverse=True)
         classesAnalysis = sorted(classesAnalysis, key=itemgetter(2))
         #classesAnalysis = sorted(classesAnalysis, key=itemgetter(2), reverse=True)
         #print classesAnalysis
+        
+        
         
         repaired = classSwap(repairing, classesAnalysis[0][0], varsNo, varsPerClass)
         repairing = repaired
@@ -247,11 +261,11 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
             f.write(str(repairing)+"\n")
             f.close()
             print repairing
-            return repairing
+            return soln
     #return repair(repairing, obj, constraints, constNo, varsNo, varsPerClass)
     return repairing
                         
-
+# TODO: should probably delete
 def improvement(originalCoeffs, newCoeffs, constNo):
     sum=0
     for index in range(len(originalCoeffs)):
@@ -448,7 +462,8 @@ def main():
                         if soln[varsNo] > 0:
                             soln = repair(soln, obj, constraints, constNo, varsNo, varsPerClass)
                     
-                    # sort the solutions, first by violations, then obj funct 
+                    # sort the solutions, first by obj funct, then by violations
+                    # this causes solutions with the same violations to be sorted next by obj funct
                     solutions = sorted(solutions, key=itemgetter(int(varsNo+1)), reverse=True)
                     solutions = sorted(solutions, key=itemgetter(int(varsNo)))
                     
@@ -479,7 +494,7 @@ def main():
                         
                         
                         #TODO: run NBHD search right here
-                        '''
+                        #'''
                         modSoln = copy.deepcopy(solutions[0])
                         # NBHD Search on best solution from each Jaya iteration
                         for classIdx in range(int(int(varsNo)/int(varsPerClass))):
@@ -616,7 +631,7 @@ def main():
                     
                     modSoln = copy.deepcopy(comboSolns[0])
                     # NBHD Search on best solution from Jaya
-                    '''
+                    #'''
                     for classIdx in range(int(int(varsNo)/int(varsPerClass))):
                         begin = classIdx * varsPerClass
                         end = begin + varsPerClass
@@ -685,7 +700,7 @@ def main():
                 probNo+=1
             
             # used to keep track of spreadsheets for debugging algorithm
-            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_none_Repair"
+            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_each_Repair"
             if(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
             else:
