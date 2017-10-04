@@ -171,6 +171,60 @@ def merge(solutions, newSolns, varsNo, solnNo, solnToKeep):
     temp = sorted(temp, key=itemgetter(int(varsNo)))
     return temp[0:solnToKeep]
     
+def NBHD(soln, obj, constraints, constNo, varsNo, varsPerClass):
+    #'''
+    modSoln = copy.deepcopy(soln)
+    prevSoln = copy.deepcopy(soln)
+    while(True):
+        # NBHD Search on best solution from each Jaya iteration
+        for classIdx in range(int(int(varsNo)/int(varsPerClass))):
+            begin = classIdx * varsPerClass
+            end = begin + varsPerClass
+            classToCheck = [range(varsPerClass),obj[begin:end],modSoln[begin:end]]
+            sortedClass = copy.deepcopy(classToCheck)
+            
+            # sort the class by best obj funct coefficients
+            sorts = zip(*sorted(zip(classToCheck[1], classToCheck[0], classToCheck[2]),reverse=True)) # sort on classToCheck[1] 
+            sortedClass = [list(sorts[1]), list(sorts[0]), list(sorts[2])]   # convert to list of lists in correct order of lists
+                
+            # go down obj funct coeff's for one class and try to make a 
+            # lower or same violation soln with a higher obj funct value
+            for var in range(int(varsPerClass)):
+                if sortedClass[2][var] == 1:   
+                    break
+                else:
+                    unsortedClass = copy.deepcopy(sortedClass)
+                    unsortedClass[2] = [0 for i in range(varsPerClass)]
+                    unsortedClass[2][var] = 1
+                    
+                    # unsort sortedClass
+                    # sort the class by proper variable order
+                    unsorted = zip(*sorted(zip(unsortedClass[0], unsortedClass[1], unsortedClass[2]))) # sort on unsortedClass[0] 
+                    unsortedClass = [list(unsorted[0]), list(unsorted[1]), list(unsorted[2])]   # convert to list of lists
+                        
+                    newSoln = modSoln[0:begin] + unsortedClass[2] + modSoln[end:-2]
+                    
+                    #print(newSoln)
+                    
+                    newSoln.append(violations(newSoln, constraints, constNo))
+                    newSoln.append(sumproduct(newSoln, obj))
+                    if newSoln[-2] <= modSoln[-2]:              # if less or same violations,
+                        if newSoln[-1] > modSoln[-1]:           # if better obj funct val,
+                            modSoln = copy.deepcopy(newSoln)    # make it new soln to work with
+                            break                               # and leave this class
+                            
+            
+                            
+        classify(modSoln, obj, varsPerClass, varsNo) # needed to ensure class constraints are obeyed
+        
+        if modSoln[-2] <= prevSoln[-2]:              # if less or same violations,
+            if modSoln[-1] > prevSoln[-1]:           # if better obj funct val,
+                prevSoln = copy.deepcopy(modSoln)    # make it new solution to try to improve upon
+            else:                                    # otherwise, same violations and same or worse obj funct
+                break                                # therefore, done searching 
+                
+    return copy.deepcopy(prevSoln)
+    
     
 def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
     repairing=soln
@@ -313,6 +367,18 @@ def main():
     book = xlrd.open_workbook(excelName)
     '''
     
+    # number of solutions to randomly generate
+    solnNo=200
+    solnToKeep=30
+    varsPerClass=10
+    # number of Jaya iterations
+    jayaIterations=200 #100-200, 600
+    
+    rNbhd1=random.randint(3,solnToKeep)
+    rNbhd2=rNbhd1
+    while(rNbhd1==rNbhd2):
+        rNbhd2=random.randint(3,solnToKeep)
+    
     random.seed(9001)
     
     start = timeit.default_timer()
@@ -328,12 +394,7 @@ def main():
             constNo=0
             defsNo=int(file.readline())
             #defsNo=1
-            # number of solutions to randomly generate
-            solnNo=200
-            solnToKeep=30
-            varsPerClass=10
-            # number of Jaya iterations
-            jayaIterations=200 #100-200, 600
+            
             # whether using Mod Jaya
             #modJaya=False
             gtConstNo=1
@@ -494,7 +555,7 @@ def main():
                         
                         
                         #TODO: run NBHD search right here
-                        #'''
+                        '''
                         modSoln = copy.deepcopy(solutions[0])
                         # NBHD Search on best solution from each Jaya iteration
                         for classIdx in range(int(int(varsNo)/int(varsPerClass))):
@@ -503,7 +564,7 @@ def main():
                             classToCheck = [range(varsPerClass),obj[begin:end],modSoln[begin:end]]
                             sortedClass = copy.deepcopy(classToCheck)
                             
-                            # sort the class by best obj funct value
+                            # sort the class by best obj funct coefficients
                             sorts = zip(*sorted(zip(classToCheck[1], classToCheck[0], classToCheck[2]),reverse=True)) # sort on classToCheck[1] 
                             sortedClass = [list(sorts[1]), list(sorts[0]), list(sorts[2])]   # convert to list of lists in correct order of lists
                                 
@@ -631,7 +692,7 @@ def main():
                     
                     modSoln = copy.deepcopy(comboSolns[0])
                     # NBHD Search on best solution from Jaya
-                    #'''
+                    '''
                     for classIdx in range(int(int(varsNo)/int(varsPerClass))):
                         begin = classIdx * varsPerClass
                         end = begin + varsPerClass
@@ -668,8 +729,35 @@ def main():
                                         
                     classify(solutions[0], obj, varsPerClass, varsNo) # needed to ensure class constraints are obeyed
                     #'''
+                    #'''
+                    #modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
+                    # just makes the best solution better
+                    nbhds = [0,1,2,rNbhd1,rNbhd2]
+                    modSolns = {}
+                    for nbhd in nbhds:
+                        modSolns[nbhd]=(NBHD(comboSolns[nbhd], obj, constraints, constNo, varsNo, varsPerClass))
+                    
+                    finalSolns = []
+                    for sol in range(len(comboSolns)):
+                        if sol in nbhds:
+                            finalSolns.append(modSolns[sol])
+                        else:
+                            finalSolns.append(comboSolns[sol])
+                    # sort the finalSolns, first by obj funct, then violations
+                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo+1)), reverse=True)
+                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo)))
+                    finalSolns = finalSolns[0:solnToKeep]
+                    #'''
                         
                     finalSoln = comboSolns[0] # used to save final soln reported
+                    if finalSolns[0][-1] > comboSolns[0][-1]:
+                        #comboSolns[0] = copy.deepcopy(modSoln)
+                        finalSoln = finalSolns[0]
+                        #print modSoln
+                        modBetterNo += 1
+                        print("NBHD got better: " + str(modBetterNo) + "\n")
+                        print("NBHD Objective: " + str(finalSolns[0][-1]) + " \nJaya Objective: " + str(comboSolns[0][-1]) + "\n")
+                    ''' original way of grabbing the nbhd answer
                     if modSoln[-1] > comboSolns[0][-1]:
                         #comboSolns[0] = copy.deepcopy(modSoln)
                         finalSoln = modSoln
@@ -677,7 +765,7 @@ def main():
                         modBetterNo += 1
                         print("NBHD got better: " + str(modBetterNo) + "\n")
                         print("NBHD Objective: " + str(modSoln[-1]) + " \nJaya Objective: " + str(comboSolns[0][-1]) + "\n")
-                    
+                    #'''
                     
                     
                     print str(itrsRun)
@@ -700,7 +788,7 @@ def main():
                 probNo+=1
             
             # used to keep track of spreadsheets for debugging algorithm
-            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_each_Repair"
+            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_2rand_Repair"
             if(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
             else:

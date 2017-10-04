@@ -37,8 +37,9 @@ def main():
         finalCol = 1
         
         tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_Jaya.xls'
-        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Jaya.xls'
-        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_each_Jaya.xls'
+        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_each_Repair_Jaya.xls'
+        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_3best_2rand_Repair_Jaya.xls'
         
         filename='mdmkp_ct'+str(dataSet)+tag
         #filename='mdmkp_ct'+str(dataSet)+'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_everyItr_Jaya.xls'
@@ -70,7 +71,7 @@ def main():
         myBook.release_resources()
     
             
-        newBook.save('mdmkpc10pc_ct'+str(dataSet)+tag)
+        newBook.save('mdmkpc10pc_ct'+str(dataSet)+tag[37:])
         #newBook.save('mdmkpc10pc_ct'+str(dataSet)+'_200itr_10itrsWithoutImprovement_NBHD_everyItr_Jaya.xls')
         print('Book '+str(dataSet)+' saved')
     
