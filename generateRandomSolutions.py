@@ -732,6 +732,28 @@ def main():
                     #'''
                     #modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
                     # just makes the best solution better
+                    
+                    
+                    # NBHD on 3 best unique
+                    finalSolns = []
+                    usedSolns = []
+                    count=0
+                    stop=3
+                    for curSoln in comboSolns:
+                        if curSoln in usedSolns:
+                            finalSolns.append(curSoln)
+                            continue
+                        else:
+                            usedSolns.append(curSoln)
+                            finalSolns.append(NBHD(curSoln, obj, constraints, constNo, varsNo, varsPerClass))
+                            count+=1
+                            if count >= stop:
+                                break
+                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo+1)), reverse=True)
+                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo)))
+                    finalSolns = finalSolns[0:solnToKeep]
+                    
+                    ''' 3 best and 2 random
                     nbhds = [0,1,2,rNbhd1,rNbhd2]
                     modSolns = {}
                     for nbhd in nbhds:
@@ -788,7 +810,7 @@ def main():
                 probNo+=1
             
             # used to keep track of spreadsheets for debugging algorithm
-            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_2rand_Repair"
+            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair"
             if(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
             else:
