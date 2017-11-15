@@ -361,6 +361,17 @@ def score(lhsAdd, constraints, constNo):
         count+=1
     return violations
     
+def sortSolns(solns,varsNo,solnToKeep):
+    solns = sorted(solns, key=itemgetter(int(varsNo+1)), reverse=True)
+    solns = sorted(solns, key=itemgetter(int(varsNo)))
+    solns = solns[0:solnToKeep]
+    return solns
+    
+def isSolnBetter(soln1, soln2, varsNo):
+    if soln1[varsNo] == soln2[varsNo]:
+        return (soln1[varsNo+1] >= soln2[varsNo+1])
+    return (soln1[varsNo] >= soln2[varsNo])
+    
 def main():
     '''
     excelName='mdmkp_ct1_1.xls'
@@ -631,6 +642,7 @@ def main():
                                 else:
                                     newSolns[i][j] = 1
                             #print newSolns[i]
+                            
                             # make the newSolns obey class constraints
                             classify(newSolns[i], obj, varsPerClass, varsNo)
                             
@@ -642,6 +654,9 @@ def main():
                                 newSolns[i][-2] = (violations(newSolns[i], constraints, constNo))
                                 newSolns[i][-1] = (sumproduct(newSolns[i], obj))
                             
+                            # repair newSoln
+                            if newSolns[i][varsNo] > 0:
+                                newSolns[i] = repair(newSolns[i], obj, constraints, constNo, varsNo, varsPerClass)
                             
                             #makeFeasible(newSolns[i])
                             
@@ -729,12 +744,10 @@ def main():
                                         
                     classify(solutions[0], obj, varsPerClass, varsNo) # needed to ensure class constraints are obeyed
                     #'''
-                    #'''
-                    #modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
-                    # just makes the best solution better
+                    finalSoln = comboSolns[0] # used to save final soln reported
                     
                     
-                    # NBHD on 3 best unique
+                    #''' NBHD on 3 best unique
                     finalSolns = []
                     usedSolns = []
                     count=0
@@ -753,34 +766,23 @@ def main():
                     finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo)))
                     finalSolns = finalSolns[0:solnToKeep]
                     
-                    ''' 3 best and 2 random
-                    nbhds = [0,1,2,rNbhd1,rNbhd2]
-                    modSolns = {}
-                    for nbhd in nbhds:
-                        modSolns[nbhd]=(NBHD(comboSolns[nbhd], obj, constraints, constNo, varsNo, varsPerClass))
-                    
-                    finalSolns = []
-                    for sol in range(len(comboSolns)):
-                        if sol in nbhds:
-                            finalSolns.append(modSolns[sol])
-                        else:
-                            finalSolns.append(comboSolns[sol])
-                    # sort the finalSolns, first by obj funct, then violations
-                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo+1)), reverse=True)
-                    finalSolns = sorted(finalSolns, key=itemgetter(int(varsNo)))
-                    finalSolns = finalSolns[0:solnToKeep]
-                    #'''
-                        
-                    finalSoln = comboSolns[0] # used to save final soln reported
-                    if finalSolns[0][-1] > comboSolns[0][-1]:
+                    modSoln = finalSolns[0]
+                    if modSoln[-1] > comboSolns[0][-1] and modSoln[-2] == 0:
                         #comboSolns[0] = copy.deepcopy(modSoln)
-                        finalSoln = finalSolns[0]
+                        finalSoln = modSoln
                         #print modSoln
                         modBetterNo += 1
                         print("NBHD got better: " + str(modBetterNo) + "\n")
-                        print("NBHD Objective: " + str(finalSolns[0][-1]) + " \nJaya Objective: " + str(comboSolns[0][-1]) + "\n")
-                    ''' original way of grabbing the nbhd answer
-                    if modSoln[-1] > comboSolns[0][-1]:
+                        print("NBHD Objective: " + str(modSoln[-1]) + " \nJaya Objective: " + str(comboSolns[0][-1]) + "\n")
+                    #'''
+                    
+
+                    
+                    
+                    ''' just makes the best solution better
+                    modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
+                    # original way of grabbing the nbhd answer 
+                    if modSoln[-1] > comboSolns[0][-1] and modSoln[-2] == 0:
                         #comboSolns[0] = copy.deepcopy(modSoln)
                         finalSoln = modSoln
                         #print modSoln
@@ -791,6 +793,7 @@ def main():
                     
                     
                     print str(itrsRun)
+                    #''' if not running NBHD search at all, comment out
                     for classIdx in range(int(int(varsNo)/int(varsPerClass))):
                         for var in range(int(varsPerClass)):
                             if(finalSoln[int(var + (classIdx*varsPerClass))] == 1):
@@ -799,6 +802,7 @@ def main():
                     sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+1, finalSoln[-2])
                     sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
                     sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+3, itrsRun)
+                    print finalSoln[-2], finalSoln[-1], itrsRun
                     
                     
                     
@@ -810,7 +814,7 @@ def main():
                 probNo+=1
             
             # used to keep track of spreadsheets for debugging algorithm
-            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair"
+            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair_each"
             if(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
             else:
