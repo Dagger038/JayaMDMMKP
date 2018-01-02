@@ -369,8 +369,8 @@ def sortSolns(solns,varsNo,solnToKeep):
     
 def isSolnBetter(soln1, soln2, varsNo):
     if soln1[varsNo] == soln2[varsNo]:
-        return (soln1[varsNo+1] >= soln2[varsNo+1])
-    return (soln1[varsNo] >= soln2[varsNo])
+        return (soln1[varsNo+1] > soln2[varsNo+1])
+    return (soln1[varsNo] < soln2[varsNo])
     
 def main():
     '''
@@ -385,16 +385,20 @@ def main():
     # number of Jaya iterations
     jayaIterations=200 #100-200, 600
     
+    # for 3 best, 2 random approach
     rNbhd1=random.randint(3,solnToKeep)
     rNbhd2=rNbhd1
     while(rNbhd1==rNbhd2):
         rNbhd2=random.randint(3,solnToKeep)
+        
+    # make false for TLBO
+    isJaya = False
     
     random.seed(9001)
     
     start = timeit.default_timer()
     
-    for probSet in [1,2,3,4,5,6,7,8,9]:
+    for probSet in [6,7,8,9]:
         for modJaya in [False]:
     
             filename='mdmkp_ct' + str(probSet) + '.txt'
@@ -485,7 +489,13 @@ def main():
                     
                 objFunctIdx=1
                 for obj in objFuncts:
-                
+                    '''
+                    # used to check dataset 6 prob 24 with TBO
+                    if(probNo < 4):
+                        break;
+                    #''' 
+                    #seems to not be here anymore?
+                    
                     #define how many >= constraints are to be used
                     if objFunctIdx%3 == 1:
                         gtConstNo=1
@@ -551,90 +561,39 @@ def main():
                     
                     
                     
-                    # JAYA / MOD JAYA algorithm
+                    # JAYA / MOD JAYA / TLBO algorithm
                     bestSoln = solutions[0]
                     worstSoln = solutions[-1]
+                    medianSoln = solutions[solnToKeep/2]
+                    improveSoln = bestSoln
                     
                     # if no improvement for 10 straight iterations, terminate
                     count = 0
                     
-                    # perform Jaya/Mod Jaya to create new solutions
+                    # perform Jaya/Mod Jaya/TLBO to create new solutions
                     for _ in range(jayaIterations):
                         itrsRun+=1
                         #bestSoln = solutions[0]
                         #worstSoln = solutions[-1]
-                        
+                        #print "BEST"
+                        #print bestSoln[-1]
                         
                         #TODO: run NBHD search right here
-                        '''
-                        modSoln = copy.deepcopy(solutions[0])
-                        # NBHD Search on best solution from each Jaya iteration
-                        for classIdx in range(int(int(varsNo)/int(varsPerClass))):
-                            begin = classIdx * varsPerClass
-                            end = begin + varsPerClass
-                            classToCheck = [range(varsPerClass),obj[begin:end],modSoln[begin:end]]
-                            sortedClass = copy.deepcopy(classToCheck)
-                            
-                            # sort the class by best obj funct coefficients
-                            sorts = zip(*sorted(zip(classToCheck[1], classToCheck[0], classToCheck[2]),reverse=True)) # sort on classToCheck[1] 
-                            sortedClass = [list(sorts[1]), list(sorts[0]), list(sorts[2])]   # convert to list of lists in correct order of lists
-                                
-                            # go down obj funct coeff's for one class and try to make a 
-                            # lower or same violation soln with a higher obj funct value
-                            for var in range(int(varsPerClass)):
-                                if sortedClass[2][var] == 1:   
-                                    break
-                                else:
-                                    unsortedClass = copy.deepcopy(sortedClass)
-                                    unsortedClass[2] = [0 for i in range(varsPerClass)]
-                                    unsortedClass[2][var] = 1
-                                    
-                                    # unsort sortedClass
-                                    # sort the class by proper variable order
-                                    unsorted = zip(*sorted(zip(unsortedClass[0], unsortedClass[1], unsortedClass[2]))) # sort on unsortedClass[0] 
-                                    unsortedClass = [list(unsorted[0]), list(unsorted[1]), list(unsorted[2])]   # convert to list of lists
-                                        
-                                    newSoln = modSoln[0:begin] + unsortedClass[2] + modSoln[end:-2]
-                                    
-                                    #print(newSoln)
-                                    
-                                    newSoln.append(violations(newSoln, constraints, constNo))
-                                    newSoln.append(sumproduct(newSoln, obj))
-                                    if newSoln[-2] <= modSoln[-2]:              # if less or same violations,
-                                        if newSoln[-1] >= modSoln[-1]:          # if better obj funct val,
-                                            modSoln = copy.deepcopy(newSoln)    # make it new soln to work with
-                                            break                               # and leave this class
-                                            
-                        classify(solutions[0], obj, varsPerClass, varsNo) # needed to ensure class constraints are obeyed
-                        
-                        #finalSoln = solutions[0] # used to save final soln reported
-                        if modSoln[-1] > solutions[0][-1]:
-                            solutions[0] = copy.deepcopy(modSoln)
-                            #finalSoln = modSoln
-                            #print modSoln
-                            #modBetterNo += 1
-                            #print("NBHD got better: " + str(modBetterNo) + "\n")
-                            #print("NBHD Objective: " + str(modSoln[-1]) + " \nJaya Objective: " + str(comboSolns[0][-1]) + "\n")
-                        
-                        #'''
-                        
-                        
-                        
-                        
-                        
-                        
                         
                         
                         for i in range(len(solutions)):
                             for j in range(int(varsNo)):
                                 r1 = random.randint(0,1)
                                 r2 = random.randint(0,1)
+                                Tf = random.randint(1,2)
                                 
                                 # TODO: need to update solutions list to use comboSolns after each iteration of Jaya
                                 # DONE
                                 currSolnVar = solutions[i][j]   
                                 
-                                newSolns[i][j] = currSolnVar + r1*(bestSoln[j]-currSolnVar) - r2*(worstSoln[j]-currSolnVar)
+                                # first equation is Jaya, second is Teaching phase
+                                newSolns[i][j] = (currSolnVar + r1*(bestSoln[j]-currSolnVar) - r2*(worstSoln[j]-currSolnVar)
+                                    if isJaya else currSolnVar + r1*(bestSoln[j] - (Tf*medianSoln[j])))
                                 
                                 # Binarization
                                 if newSolns[i][j] <= 0:
@@ -658,19 +617,26 @@ def main():
                             if newSolns[i][varsNo] > 0:
                                 newSolns[i] = repair(newSolns[i], obj, constraints, constNo, varsNo, varsPerClass)
                             
-                            #makeFeasible(newSolns[i])
                             
-                            # check line 377
+                            # TODO: check for instances of better violations, but worse obj funct
                             # if violations are less, immediately replace
                             # if violations are the same, keep better obj funct
                             # if violations are worse, throw away new solution
                             if (not(modJaya)):
+                                '''
                                 if newSolns[i][int(varsNo)] <= solutions[i][int(varsNo)] and newSolns[i][int(varsNo)+1] > solutions[i][int(varsNo)+1]:
                                     comboSolns[i] = newSolns[i]
                                     #print comboSolns[i]
+                                #'''
+                                if (isSolnBetter(newSolns[i],solutions[i],varsNo)):
+                                    comboSolns[i] = copy.deepcopy(newSolns[i])
+                                    #if i == 0: print "NEW"
                                 else:
-                                    comboSolns[i] = solutions[i]
+                                    comboSolns[i] = copy.deepcopy(solutions[i])
                                     #print comboSolns[i]
+                                    #if i == 0: print 'OLD'
+                        #print newSolns[0][-1]
+                        #print solutions[0][-1]
                         #print comboSolns[0]
                         #print newSolns
                         
@@ -688,66 +654,45 @@ def main():
                         comboSolns = sorted(comboSolns, key=itemgetter(int(varsNo)))
                         comboSolns = comboSolns[0:solnToKeep]
                         
-                        solutions = comboSolns
+                        solutions = copy.deepcopy(comboSolns)
+                        
+                        # TODO: rework so it's explicitly the same solution X times in a row
+                        #       not just X times of the prev. best and curr. best being the same
+                        if count == 0:
+                            improveSoln = copy.deepcopy(bestSoln)
+                            count+=1
+                        else:
+                            if(improveSoln == comboSolns[0]):
+                                count+=1
+                                if(count==itrsWithoutImprovement):
+                                    break
+                            else:
+                                count=0
+                        #print count
                         
                         # if no improvement for x iterations, stop
+                        '''
                         if(bestSoln[-1] == comboSolns[0][-1]):
                             count+=1
                             if(count==itrsWithoutImprovement):
                                 break
                         else:
                             count=0
+                        #'''
                             
                         
-                        # grab the best and worst of the new 30 comboSolns
+                        # grab the best, worst, and median of the new 30 comboSolns
                         bestSoln = comboSolns[0]
                         worstSoln = comboSolns[-1]
-                    # end of Jaya
+                        medianSoln = comboSolns[solnToKeep/2]
+                    # end of JAYA / MODJAYA / TLBO 
                     
                     
                     modSoln = copy.deepcopy(comboSolns[0])
-                    # NBHD Search on best solution from Jaya
-                    '''
-                    for classIdx in range(int(int(varsNo)/int(varsPerClass))):
-                        begin = classIdx * varsPerClass
-                        end = begin + varsPerClass
-                        classToCheck = [range(varsPerClass),obj[begin:end],modSoln[begin:end]]
-                        sortedClass = copy.deepcopy(classToCheck)
-                        
-                        # sort the class by best obj funct value
-                        sorts = zip(*sorted(zip(classToCheck[1], classToCheck[0], classToCheck[2]),reverse=True)) # sort on classToCheck[1] 
-                        sortedClass = [list(sorts[1]), list(sorts[0]), list(sorts[2])]   # convert to list of lists in correct order of lists
-                            
-                        # go down obj funct coeff's for one class and try to make a 
-                        # lower or same violation soln with a higher obj funct value
-                        for var in range(int(varsPerClass)):
-                            if sortedClass[2][var] == 1:   
-                                break
-                            else:
-                                unsortedClass = copy.deepcopy(sortedClass)
-                                unsortedClass[2] = [0 for i in range(varsPerClass)]
-                                unsortedClass[2][var] = 1
-                                
-                                # unsort sortedClass
-                                # sort the class by proper variable order
-                                unsorted = zip(*sorted(zip(unsortedClass[0], unsortedClass[1], unsortedClass[2]))) # sort on unsortedClass[0] 
-                                unsortedClass = [list(unsorted[0]), list(unsorted[1]), list(unsorted[2])]   # convert to list of lists
-                                    
-                                newSoln = modSoln[0:begin] + unsortedClass[2] + modSoln[end:-2]
-                                
-                                newSoln.append(violations(newSoln, constraints, constNo))
-                                newSoln.append(sumproduct(newSoln, obj))
-                                if newSoln[-2] <= modSoln[-2]:              # if less or same violations,
-                                    if newSoln[-1] >= modSoln[-1]:          # if better obj funct val,
-                                        modSoln = copy.deepcopy(newSoln)    # make it new soln to work with
-                                        break                               # and leave this class
-                                        
-                    classify(solutions[0], obj, varsPerClass, varsNo) # needed to ensure class constraints are obeyed
-                    #'''
                     finalSoln = comboSolns[0] # used to save final soln reported
                     
                     
-                    #''' NBHD on 3 best unique
+                    ''' NBHD on 3 best unique
                     finalSolns = []
                     usedSolns = []
                     count=0
@@ -779,7 +724,7 @@ def main():
 
                     
                     
-                    ''' just makes the best solution better
+                    #''' NBHD on just the best
                     modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
                     # original way of grabbing the nbhd answer 
                     if modSoln[-1] > comboSolns[0][-1] and modSoln[-2] == 0:
@@ -814,107 +759,21 @@ def main():
                 probNo+=1
             
             # used to keep track of spreadsheets for debugging algorithm
-            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair_each"
+            debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_Repair_each"
             if(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
-            else:
+            elif(isJaya):
                 book.save(filename[:-4] +debug+'_Jaya.xls')
-            print('Book Saved: ' + filename[:-4] +debug+'_Jaya.xls')
+                print('Book Saved: ' + filename[:-4] +debug+'_Jaya.xls')
+            else:
+                book.save(filename[:-4] +debug+'_TBO.xls')
+                print('Book Saved: ' + filename[:-4] +debug+'_TBO.xls')
+            
             
     # tracking runtime   
     stop = timeit.default_timer()
     print (stop - start)
-    '''
-    # number of solutions to randomly generate
-    solnNo=100
-    solnToKeep=30
-    varsPerClass=10
-    gtConstNo=1
-    #[[None]*5 for _ in range(5)]
-    solutions=[[]]*solnNo
     
-    
-    # for all the sheets in the excel file
-    for name in book.sheet_names():
-        # only on the first sheet (can delete later to do all sheets)
-        if name.endswith('1'):
-            sheet = book.sheet_by_name(name)
-            varsNo = sheet.cell(1,4).value
-            constNo = sheet.cell(2,4).value
-            gtConstNo=int(constNo)
-            objFunct = []
-            solutions=[[None]*int(varsNo) for _ in range(int(solnNo))]
-            constraints = [[None]*int(varsNo) for _ in range(int(constNo+gtConstNo))]
-            for index in range(int(varsNo)):
-                objFunct.append(int(sheet.cell(5,index+3).value))
-                
-            constIdx=0
-            for constraint in constraints:
-                varIdx=0
-                for var in constraint:
-                    #print sheet.cell(constIdx+7,varIdx+3).value
-                    constraint[varIdx] = (int(sheet.cell(constIdx+7,varIdx+3).value))
-                    varIdx+=1
-                #print constraint
-                #constraint.append(int(sheet.cell(constIdx+7,int(varsNo)+2+3).value))
-                #print constraint
-                constIdx+=1
-            #print constraints
-                
-            constIdx=0
-            for constraint in constraints:
-                constraint.append(int(sheet.cell(constIdx+7,int(varsNo)+2+3).value))
-                #print constraint
-                constIdx+=1
-            
-            #print objFunct
-            #print constraints[0]
-            
-            for soln in solutions:
-                #soln.append(random.randint(0,1))
-                for classIdx in range(int(varsNo/varsPerClass)):
-                    # choose which var in each class gets used
-                    theOne = random.randint(0,varsPerClass-1)
-                    for j in range(int(varsPerClass)):
-                        #print classIdx+j
-                        if j == theOne:
-                            soln[(varsPerClass*classIdx)+j] = 1
-                        else:
-                            soln[(varsPerClass*classIdx)+j] = 0
-                    #classify(soln, objFunct, i*varsPerClass)
-                #soln.append(violations())
-            #print solutions[0]
-
-            
-
-            # after extensive testing, I have concluded that nested for 
-            # loops and .append() do not work as expected with each other
-
-            #print constraints
-            #print solutions
-            constVal=10000
-            objFunctVal=10000
-            count=0
-            for soln in solutions:
-                soln.append(violations(soln, constraints, constNo))
-                soln.append(sumproduct(soln, objFunct))
-                ''
-                soln.append(constVal)
-                soln.append(objFunctVal)
-                if count%2 == 0:
-                    constVal=constVal-100
-                objFunctVal=objFunctVal-100
-                count+=1
-                ''
-            #print constraints
-            #print solutions[0:30]
-            solutions = sorted(solutions, key=itemgetter(int(varsNo+1)), reverse=True)
-            solutions = sorted(solutions, key=itemgetter(int(varsNo)))
-            solutions = solutions[0:30]
-            #print solutions[0:30]
-            print infeasible(constraints, constNo, varsNo, varsPerClass)
-    '''
-
         
 if __name__ == '__main__':
 	main()
