@@ -1,7 +1,7 @@
 # Filename:         generateRandomSolutions.py
 # Author:           Dylan Gaspar
 # Class:            GA
-# Last Modified:    03/27/2017
+# Last Modified:    02/15/2018
 # Purpose:          reads in MDMKP problems from local text files and 
 #                   prints out the generated constraints and objective
 #                   functions
@@ -231,6 +231,7 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
     count=0
     #print repairing[varsNo]
     while repairing[varsNo] > 0:
+        lastRepair=copy.deepcopy(repairing)
         #print repairing[varsNo]
         lhsOrig=lhs(soln, constraints, varsNo)
         classesAnalysis=[]
@@ -287,7 +288,8 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
         repairing = repaired
         repairing[-2] = violations2(repairing, constraints, constNo,varsNo)
         repairing[-1] = sumproduct(repairing, obj)
-        if repairing[varsNo] == 0:
+        classify(repairing, obj, varsPerClass, varsNo)
+        if repairing[varsNo] == 0 or repairing == lastRepair:
                 return repairing
         
         ''' Can't just loop through the classesAnalysis, need to re-evaluate
@@ -304,6 +306,7 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
             if repairing[varsNo] == 0:
                 return repairing
         #'''
+        '''
         count+=1
         if count > 100:
             f = open('issues.txt', 'w')
@@ -316,6 +319,7 @@ def repair(soln, obj, constraints, constNo, varsNo, varsPerClass):
             f.close()
             print repairing
             return soln
+        #'''
     #return repair(repairing, obj, constraints, constNo, varsNo, varsPerClass)
     return repairing
                         
@@ -393,17 +397,22 @@ def main():
     while(rNbhd1==rNbhd2):
         rNbhd2=random.randint(3,solnToKeep)
         
-    # make false for TLBO
-    isJaya = True
+    # make false for TLBO or subsets
+    isJaya = False
     
     # make false for Learning
     isTeaching = True
+    
+    # make false to let other algorithms run
+    # when using TLBO, make sure isJaya = False
+    #   and isTeaching starts off True
+    isTLBO = False
     
     random.seed(9001)
     
     start = timeit.default_timer()
     
-    for probSet in [1,2,3,4,5,6,7,8,9]:
+    for probSet in [6]:
         for modJaya in [False]:
     
             filename='mdmkp_ct' + str(probSet) + '.txt'
@@ -609,6 +618,9 @@ def main():
                     # if no improvement for 10 straight iterations, terminate
                     count = 0
                     
+                    # zero out for each problem within problem definition
+                    itrsRun=0
+                    
                     # perform Jaya/Mod Jaya/TLBO to create new solutions
                     for _ in range(jayaIterations):
                         itrsRun+=1
@@ -666,52 +678,13 @@ def main():
                             
                             # repair newSoln
                             if newSolns[i][varsNo] > 0:
+                                #print newSolns[i]
                                 newSolns[i] = repair(newSolns[i], obj, constraints, constNo, varsNo, varsPerClass)
+                                #classify(newSolns[i], obj, varsPerClass, varsNo)
+                                #print newSolns[i]
                             
                             newHash = hash(frozenset(newSolns[i]))
                             
-                            ''' Attempting to enforce uniqueness
-                            while(newHash in solnsHash):
-                                print newHash
-                                print solnsHash
-                                print "New Population"
-                                for j in range(int(varsNo)):
-                                    r1 = random.randint(0,1)
-                                    r2 = random.randint(0,1)
-                                    Tf = random.randint(1,2)
-                                    
-                                    currSolnVar = solutions[i][j]   
-                                    
-                                    # first equation is Jaya, second is Teaching phase
-                                    newSolns[i][j] = (currSolnVar + r1*(bestSoln[j]-currSolnVar) - r2*(worstSoln[j]-currSolnVar)
-                                        if isJaya else currSolnVar + r1*(bestSoln[j] - (Tf*medianSoln[j])))
-                                    
-                                    # Binarization
-                                    if newSolns[i][j] <= 0:
-                                        newSolns[i][j] = 0
-                                    else:
-                                        newSolns[i][j] = 1
-                                #print newSolns[i]
-                                
-                                # make the newSolns obey class constraints
-                                classify(newSolns[i], obj, varsPerClass, varsNo)
-                                
-                                # add violations and obj funct to each newSoln
-                                if len(newSolns[i]) <= varsNo:
-                                    newSolns[i].append(violations(newSolns[i], constraints, constNo))
-                                    newSolns[i].append(sumproduct(newSolns[i], obj))
-                                else:
-                                    newSolns[i][-2] = (violations(newSolns[i], constraints, constNo))
-                                    newSolns[i][-1] = (sumproduct(newSolns[i], obj))
-                                
-                                # repair newSoln
-                                if newSolns[i][varsNo] > 0:
-                                    newSolns[i] = repair(newSolns[i], obj, constraints, constNo, varsNo, varsPerClass)
-                                
-                                newHash = hash(frozenset(newSolns[i]))
-                                
-                            solnsHash[i] = newHash
-                            #'''
                             
                             # TODO: check for instances of better violations, but worse obj funct
                             # if violations are less, immediately replace
@@ -764,7 +737,9 @@ def main():
                                     break
                             else:
                                 count=0
-                        #print count
+                        # used to alternate between teaching and learning phases in TLBO
+                        if(isTLBO):
+                            isTeaching = not(isTeaching)
                         
                         # if no improvement for x iterations, stop
                         '''
@@ -833,17 +808,23 @@ def main():
                     #'''
                     
                     
-                    print str(itrsRun)
-                    #''' if not running NBHD search at all, comment out
+                    print "\nNumber of Iterations: " + str(itrsRun)
+                    print "Problem Number:       " + str(6*(probNo-1)+objFunctIdx)
+                    #print finalSoln
+                    
                     for classIdx in range(int(int(varsNo)/int(varsPerClass))):
                         for var in range(int(varsPerClass)):
                             if(finalSoln[int(var + (classIdx*varsPerClass))] == 1):
                                 #print int(var + (classIdx*varsPerClass))
                                 sheet.write(objFunctIdx+5, classIdx+5, int(var + (classIdx*varsPerClass)))
                     sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+1, finalSoln[-2])
-                    sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
+                    if(finalSoln[varsNo] == 0):
+                        sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
+                    else:
+                        sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, 0)
+                    #sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
                     sheet.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+3, itrsRun)
-                    print finalSoln[-2], finalSoln[-1], itrsRun
+                    #print finalSoln[-2], finalSoln[-1], itrsRun
                     
                     # NBHD search on just the best
                     modSoln = NBHD(comboSolns[0], obj, constraints, constNo, varsNo, varsPerClass)
@@ -853,9 +834,12 @@ def main():
                         finalSoln = modSoln
                         #print modSoln
                         modBetterNo += 1
-                        print("NBHD got better: " + str(modBetterNo) + "\n")
-                        print("NBHD Objective: " + str(modSoln[-1]) + " \nOriginal Objective: " + str(comboSolns[0][-1]) + "\n")
-                    
+                        print("NBHD got better:      " + str(modBetterNo))
+                        print("NBHD Objective:       " + str(modSoln[-1]) + " \nOriginal Objective:   " + str(finalSoln[-1]))
+                    else:
+                        print("NBHD stayed the same: ")
+                        print("Original Objective:   " + str(finalSoln[-1]))
+                    #print finalSoln
                     # save book for NBHD search results
                     for classIdx in range(int(int(varsNo)/int(varsPerClass))):
                         for var in range(int(varsPerClass)):
@@ -863,9 +847,13 @@ def main():
                                 #print int(var + (classIdx*varsPerClass))
                                 sheetNbhd.write(objFunctIdx+5, classIdx+5, int(var + (classIdx*varsPerClass)))
                     sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+1, finalSoln[-2])
-                    sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
+                    if(finalSoln[varsNo] == 0):
+                        sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
+                    else:
+                        sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, 0)
+                    #sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+2, finalSoln[-1])
                     sheetNbhd.write(objFunctIdx+5, int(varsNo)/int(varsPerClass)+5+3, itrsRun)
-                    print finalSoln[-2], finalSoln[-1], itrsRun
+                    #print finalSoln[-2], finalSoln[-1], itrsRun
                     
                     # needed for determining the number of >= constraints
                     # and which row to write into in each excel sheet
@@ -877,7 +865,12 @@ def main():
             # used to keep track of spreadsheets for debugging algorithm
             debug="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Unique"
             debugNbhd="Debug_"+str(jayaIterations)+"itr_" + str(itrsWithoutImprovement) + "itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Unique"
-            if(modJaya):
+            if(isTLBO):
+                book.save(filename[:-4] +debug+'_TLBO.xls')
+                print('Book Saved: ' + filename[:-4] +debug+'_TLBO.xls')
+                bookNbhd.save(filename[:-4] +debugNbhd+'_TLBO.xls')
+                print('Book Saved: ' + filename[:-4] +debugNbhd+'_TLBO.xls')
+            elif(modJaya):
                 book.save(filename[:-4] +debug+'_modJaya.xls')
                 bookNbhd.save(filename[:-4] +debugNbhd+'_modJaya.xls')
             elif(isJaya):

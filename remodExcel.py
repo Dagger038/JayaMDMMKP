@@ -41,9 +41,20 @@ def main():
         #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_each_Repair_Jaya.xls'
         #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_3best_2rand_Repair_Jaya.xls'
         #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair_Jaya.xls'
-        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair_each_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_3best_unique_Repair_each_Jaya.xls'
         #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Jaya.xls'
         #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_TBO.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_TBO.xls'
+        # need to rerun dataset 6 of TBO before getting updated data
+        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Unique_TBO.xls'
+        tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Unique_TBO.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Unique_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Unique_Jaya.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Unique_LBO.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Unique_LBO.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_none_Repair_each_Unique_TLBO.xls'
+        #tag = 'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_once_Repair_each_Unique_TLBO.xls'
         
         filename='mdmkp_ct'+str(dataSet)+tag
         #filename='mdmkp_ct'+str(dataSet)+'Debug_200itr_10itrsWithoutImprovement_seeded_NBHD_everyItr_Jaya.xls'
